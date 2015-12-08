@@ -1,5 +1,6 @@
 package parsercombinators
 
+import scala.language.implicitConversions
 /**
   * Created by ariwaranosai on 15/12/7.
   */
@@ -25,8 +26,12 @@ trait SimpleParsers extends SimpleResults {
             y <- p
         } yield (x, y)
 
-        def log(name: String) = new Parser[T] {
-            def apply(in: Input): Result[T] = {
+        def filter(f: T => Boolean): Parser[T] = Parser {
+            in => this(in) filter f
+        }
+
+
+        def log(name: String) = Parser { in => {
                 println("trying " + name + " at \'" + in + "\'")
                 val r = self(in)
                 println(name + " -> " + r)
@@ -35,33 +40,31 @@ trait SimpleParsers extends SimpleResults {
         }
     }
 
+    def consumeFirst: Parser[Elem] = Parser { in =>
+        Success(first(in), rest(in))(Failure("unknow failure", in))
+    }
+
+    def acceptIf(p: Elem => Boolean): Parser[Elem] = consumeFirst filter p
+
+    implicit def accept(e: Elem): Parser[Elem] = acceptIf(_ == e)
 
 }
 
 trait StringParsers extends SimpleParsers {
     type Input = String
+    type Elem = Char
     private val EOI = 0.toChar
 
-    def accept(expected: Char) = new Parser[Char] {
-        def apply(in: String) =
-            if (in == "") {
-                if (expected == EOI)
-                    Success(expected, "")
-                else
-                    Failure("no more input", in)
-            } else if(in.charAt(0) == expected) {
-                Success(expected, in.substring(1))
-            } else {
-                Failure("expected \'" + expected + "\'", in)
-            }
-    }
+    def first(in: Input): Elem = if(in == "") EOI else in(0)
+    def rest(in: Input): Input = if(in == "") in else in.substring(1)
 
     def eoi = accept(EOI)
 }
 
+
 object OXOParser extends StringParsers {
-    def oxo = accept('o') ~ accept('x') ~ accept('o')
-    def oxos: Parser[List[String]] = ((oxo ~ accept(' ')).map(_ => "oxo") ~ oxos).map(x => x._1 :: x._2) | oxo.map(_ => List("oxo"))
+    def oxo = 'o' ~ 'x' ~ 'o'
+    def oxos: Parser[List[String]] = ((oxo ~ ' ').map(_ => "oxo") ~ oxos).map(x => x._1 :: x._2) | oxo.map(_ => List("oxo"))
 
     def main(args: Array[String]) = println((oxos.log("oxos") ~ eoi.log("eoi"))(args(0)))
 }

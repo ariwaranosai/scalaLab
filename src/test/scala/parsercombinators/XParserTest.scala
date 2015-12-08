@@ -1,6 +1,6 @@
 package parsercombinators
 
-import org.scalatest.{WordSpecLike, Matchers, FlatSpec}
+import org.scalatest.{Matchers, FlatSpec}
 
 /**
   * Created by ariwaranosai on 15/12/7.
@@ -12,7 +12,7 @@ class XParserTest extends FlatSpec with Matchers {
     }
 
     it should "resolve string contain x right" in {
-        assert(XParser.acceptX("xabcd") == XParser.Success('x', "abcd"))
+        assert(XParser.acceptX("xabcd") == XParser.Success('x', "abcd")(XParser.Failure("unknow error", "")))
     }
 
 }
