@@ -7,12 +7,31 @@ package parsercombinators
 trait SimpleResults {
     type Input
 
+    /*
+     * 对每次的结果抽象出来一个类型,这个类型最初只包含接下来的内容(这个很直观).
+     * 然后为了结果是可combinator的,加入了更多的函数
+     */
     trait Result[+T] {
         def next: Input
+        def map[U](f: T => U): Result[U]
+        def flatMapWithNext[U](f: T => Input => Result[U]): Result[U]
+        def append[U >: T](alt: => Result[U]): Result[U]
+        def flatMap[U](f: T => Result[U]): Result[U]
     }
 
-    case class Success[+T](result: T, next: Input) extends Result[T]
-    case class Failure(msg: String, next: Input) extends Result[Nothing]
+    case class Success[+T](result: T, next: Input) extends Result[T] {
+        def map[U](f: T => U) = Success(f(result), next)
+        def flatMapWithNext[U](f: T => Input => Result[U]) = f(result)(next)
+        def append[U >: T](alt: => Result[U]) = this
+        def flatMap[U](f: T => Result[U]): Result[U] = f(result)
+    }
+
+    case class Failure(msg: String, next: Input) extends Result[Nothing] {
+        def map[U](f: Nothing => U) = this
+        def flatMapWithNext[U](f: Nothing => Input => Result[U]) = this
+        def append[U](alt: => Result[U]) = alt
+        def flatMap[U](f: Nothing => Result[U]): Result[U] = this
+    }
 }
 
 object XParser extends SimpleResults {

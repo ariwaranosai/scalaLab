@@ -5,25 +5,25 @@ package parsercombinators
   */
 
 trait SimpleParsers extends SimpleResults {
+    def Parser[T](f: Input => Result[T])
+        = new Parser[T] { def apply(in: Input) = f(in)}
+    /*
+     * Parser 是一个类型,接受 Input 返回一个结果,为了是combinator的,加入了高阶函数.
+     */
     trait Parser[+T] extends (Input => Result[T]) { self =>
         def apply(in: Input): Result[T]
 
-        def | [U >: T](p: => Parser[U]): Parser[U] = new Parser[U] {
-            def apply(in: Input) = Parser.this(in) match {
-                case s@Success(x, n) => s
-                case Failure(_, _) => p(in)
-            }
-        }
+        def flatMap[U](f: T => Parser[U]): Parser[U]
+            = Parser { in => Parser.this(in).flatMapWithNext(f)}
 
-        def ~ [U](p: => Parser[U]): Parser[(T, U)] = new Parser[(T, U)] {
-            def apply(in: Input) = Parser.this(in) match {
-                case Success(x, next) => p(next) match {
-                    case Success(x2, next2) => Success((x, x2), next2)
-                    case f@Failure(m, n) => f
-                }
-                case f@Failure(m, n) => f
-            }
-        }
+        def map[U](f: T => U): Parser[U] = Parser { in => Parser.this(in).map(f)}
+
+        def | [U >: T](p: => Parser[U]): Parser[U] = Parser { in => Parser.this(in).append(p(in)) }
+
+        def ~ [U](p: => Parser[U]): Parser[(T, U)] =  for {
+            x <- this
+            y <- p
+        } yield (x, y)
 
         def log(name: String) = new Parser[T] {
             def apply(in: Input): Result[T] = {
@@ -61,7 +61,7 @@ trait StringParsers extends SimpleParsers {
 
 object OXOParser extends StringParsers {
     def oxo = accept('o') ~ accept('x') ~ accept('o')
-    def oxos: Parser[Any] = (oxo ~ accept(' ') ~ oxos) | oxo
+    def oxos: Parser[List[String]] = ((oxo ~ accept(' ')).map(_ => "oxo") ~ oxos).map(x => x._1 :: x._2) | oxo.map(_ => List("oxo"))
 
     def main(args: Array[String]) = println((oxos.log("oxos") ~ eoi.log("eoi"))(args(0)))
 }
