@@ -1,6 +1,6 @@
 package parsercombinators
 
-import scala.language.implicitConversions
+import scala.language.{implicitConversions, postfixOps}
 /**
   * Created by ariwaranosai on 15/12/7.
   */
@@ -20,6 +20,7 @@ trait SimpleParsers extends SimpleResults {
         def map[U](f: T => U): Parser[U] = Parser { in => Parser.this(in).map(f)}
 
         def | [U >: T](p: => Parser[U]): Parser[U] = Parser { in => Parser.this(in).append(p(in)) }
+        def or [U >: T](p: => Parser[U]): Parser[U] = Parser { in => Parser.this(in).append(p(in)) }
 
         def ~ [U](p: => Parser[U]): Parser[(T, U)] =  for {
             x <- this
@@ -30,23 +31,52 @@ trait SimpleParsers extends SimpleResults {
             in => this(in) filter f
         }
 
+        def ~> [U](p: => Parser[U]): Parser[U] = for (
+            a <- this;
+            b <- p
+        ) yield b
 
-        def log(name: String) = Parser { in => {
+        def <~ [U](p: => Parser[U]): Parser[T] = for {
+            a <- this
+            b <- p
+        } yield a
+
+        def ^^ [U](f: T => U): Parser[U] = map(f)
+
+        def dontBacktrack: Parser[T] = Parser { in =>
+            this(in) mkError "Error"
+        }
+
+        def ~! [U](p: => Parser[U]): Parser[(T, U)] = (dontBacktrack ~ p) dontBacktrack
+
+        def explainWith(msg: Input => String): Parser[T] = Parser { in =>
+            this(in) explain msg(in)
+        }
+
+        def explain(msg: String): Parser[T] = Parser { in =>
+            this(in) explain msg
+        }
+
+        def expected(kind: String): Parser[T] =
+            explainWith(in => "" + kind + " expected, but \'" + first(in) + "\' found.")
+
+        def log(name: String) = Parser[T] { in => {
                 println("trying " + name + " at \'" + in + "\'")
                 val r = self(in)
                 println(name + " -> " + r)
                 r
             }
         }
+
     }
 
     def consumeFirst: Parser[Elem] = Parser { in =>
-        Success(first(in), rest(in))(Failure("unknow failure", in))
+        Success(first(in), rest(in))(Failure("unknown failure", in))
     }
 
     def acceptIf(p: Elem => Boolean): Parser[Elem] = consumeFirst filter p
 
-    implicit def accept(e: Elem): Parser[Elem] = acceptIf(_ == e)
+    implicit def accept(e: Elem): Parser[Elem] = acceptIf(_ == e).expected(e.toString)
 
 }
 
@@ -58,8 +88,9 @@ trait StringParsers extends SimpleParsers {
     def first(in: Input): Elem = if(in == "") EOI else in(0)
     def rest(in: Input): Input = if(in == "") in else in.substring(1)
 
-    def eoi = accept(EOI)
+    def eoi = EOI
 }
+
 
 
 object OXOParser extends StringParsers {

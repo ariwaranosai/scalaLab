@@ -12,7 +12,7 @@ class XParserTest extends FlatSpec with Matchers {
     }
 
     it should "resolve string contain x right" in {
-        assert(XParser.acceptX("xabcd") == XParser.Success('x', "abcd")(XParser.Failure("unknow error", "")))
+        assert(XParser.acceptX("xabcd") == XParser.Success('x', "abcd")(XParser.Failure("unknown error", "")))
     }
 
 }

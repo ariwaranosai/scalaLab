@@ -1,5 +1,7 @@
 package parsercombinators
 
+import sun.reflect.generics.reflectiveObjects.NotImplementedException
+
 /**
   * Created by ariwaranosai on 15/12/7.
   */
@@ -21,6 +23,8 @@ trait SimpleResults {
         def append[U >: T](alt: => Result[U]): Result[U]
         def flatMap[U](f: T => Result[U]): Result[U]
         def filter(f: T => Boolean): Result[T] = this
+        def explain(ei: String): Result[T]
+        def mkError(ei: String): Result[T] = Error(ei, next)
     }
 
     case class Success[+T](result: T, next: Input)(val zero: Failure) extends Result[T] {
@@ -29,6 +33,8 @@ trait SimpleResults {
         def append[U >: T](alt: => Result[U]) = this
         def flatMap[U](f: T => Result[U]): Result[U] = f(result)
         override def filter(f: T => Boolean): Result[T] = if (f(result)) this else zero
+        def explain(ei: String) = this
+        override def mkError(ei: String) = this
     }
 
     case class Failure(msg: String, next: Input) extends Result[Nothing] {
@@ -36,6 +42,17 @@ trait SimpleResults {
         def flatMapWithNext[U](f: Nothing => Input => Result[U]) = this
         def append[U](alt: => Result[U]) = alt
         def flatMap[U](f: Nothing => Result[U]): Result[U] = this
+        def explain(ei: String) = Failure(ei, next)
+        override def mkError(ei: String) = Error(msg, next)
+    }
+
+    case class Error(msg: String, next: Input) extends Result[Nothing] {
+        def map[U](f: Nothing => U) = this
+        def append[U](alt: => Result[U]) = this
+        def flatMapWithNext[U](f: Nothing => Input => Result[U]) = this
+        def flatMap[U](f: Nothing => Result[U]): Result[U] = this
+        override def filter(f: Nothing => Boolean): Result[Nothing] = this
+        def explain(ei: String) = Error(ei, next)
     }
 }
 
@@ -48,7 +65,7 @@ object XParser extends SimpleResults {
 
     val acceptX: Input  => Result[Char] = {
         (in: String) => if (in.length > 0 && in.charAt(0) == 'x')
-            Success('x', in.substring(1))(Failure("unknow error", in))
+            Success('x', in.substring(1))(Failure("unknown error", in))
             else Failure("expected an x", in)
     }
 }
@@ -62,7 +79,7 @@ class CharParser(x: Char) extends SimpleResults {
 
     val acceptX: Input => Result[Char] = {
         (in: String) => if (in.length > 0 && in.charAt(0) == x)
-            Success(x, in.substring(1))(Failure("unknow error", in))
+            Success(x, in.substring(1))(Failure("unknown error", in))
             else Failure("expected an " + x.toString, in)
     }
 }
