@@ -62,11 +62,13 @@ object DeclareParser extends StringParsers with MoreCombinators {
     def main(args: Array[String]) = println((member.log("member") ~ eoi.log("eoi"))("valfe"))
 }
 
-object ArithmeticParsers extends StringParsers with MoreCombinators { self =>
+object ArithmericParsers extends StringParsers with MoreCombinators { self =>
 
     def digit = '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9'
 
-    def number = rep(digit) ^^ {x => x.mkString("").toInt}
+    def number = rep(digit) ^^ {x => x.mkString("")}
+
+    def double = (number ~ '.' ~ number) ^^ {case ((x, y), z) => (x + y.toString + z)} | number ^^ { _.toDouble}
 
     def plus = '+' ^^ {_ => (x: Int, z: Int) => x + z}
     def mins = '-' ^^ {_ => (x: Int, z: Int) => x - z}
@@ -75,9 +77,9 @@ object ArithmeticParsers extends StringParsers with MoreCombinators { self =>
 
     def expr = chainl1(term, plus or mins)
     def term = chainl1(factor, prod or div)
-    def factor: Parser[Int] = '(' ~> expr <~ ')' or number
+    def factor: Parser[Int] = '(' ~> expr <~ ')' or number ^^ {_.toInt}
 
-    def main(args: Array[String]) = println(expr("(13+12)/(5*1)"))
+    def main(args: Array[String]) = println(double("12.324.2"))
 }
 
 
