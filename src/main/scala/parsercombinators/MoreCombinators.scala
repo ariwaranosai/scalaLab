@@ -68,7 +68,7 @@ object ArithmericParsers extends StringParsers with MoreCombinators { self =>
 
     def number = rep(digit) ^^ {x => x.mkString("")}
 
-    def double = (number ~ '.' ~ number) ^^ {case ((x, y), z) => (x + y.toString + z)} | number ^^ { _.toDouble}
+    def double = (number ~ '.' ~ number) ^^ {case ((x, y), z) => x + y.toString + z} | number ^^ { _.toDouble}
 
     def plus = '+' ^^ {_ => (x: Int, z: Int) => x + z}
     def mins = '-' ^^ {_ => (x: Int, z: Int) => x - z}
