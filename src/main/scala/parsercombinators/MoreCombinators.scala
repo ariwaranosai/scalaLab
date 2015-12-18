@@ -1,5 +1,7 @@
 package parsercombinators
 
+import scala.util.matching.Regex
+
 /**
   * Created by ariwaranosai on 15/12/8.
   *
@@ -48,12 +50,33 @@ trait MoreCombinators extends SimpleParsers {
     }
 }
 
+
+trait MoreStringParsers extends StringParsers with MoreCombinators {
+    implicit def regex(r: Regex): Parser[String] = Parser { in =>
+        val msg = "expect regex " + r
+        r.findPrefixOf(in) match {
+            case None => Failure(msg, in)
+            case Some(m) =>
+                Success(m, in.substring(m.length))(Failure("unknown error", in))
+        }
+    }
+
+    val empty = Parser[String] { in  => Success("", in)(Failure("unknown error", in))}
+}
+
 object OXOParserNew extends StringParsers with MoreCombinators {
     def oxy = "oxy".log("oxy") ^^ { x => x.mkString("")}
     def oxys = rep1seq(oxy, ' ').log("oxy")
 
     def main(args: Array[String]) = println((oxys ~ eoi.log("eoi"))("oxy oxy oxy"))
 }
+
+object ReParser extends MoreStringParsers {
+    val number = chainl1("[1-9]".r, "[0-9]+".r, empty ^^ { _ => (x: String, y: String) => x + y })
+
+    def main(args: Array[String]) = println(number("1239mfas"))
+}
+
 
 object DeclareParser extends StringParsers with MoreCombinators {
 
