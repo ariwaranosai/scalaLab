@@ -85,24 +85,22 @@ object DeclareParser extends StringParsers with MoreCombinators {
     def main(args: Array[String]) = println((member.log("member") ~ eoi.log("eoi"))("valfe"))
 }
 
-object ArithmericParsers extends StringParsers with MoreCombinators { self =>
+object ArithmericParsers extends MoreStringParsers with MoreCombinators { self =>
 
-    def digit = '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9'
+    def number = chainl1("[1-9]".r, "[0-9]+".r, empty ^^ { _ => (x:String, y:String) => x + y})
 
-    def number = rep(digit) ^^ {x => x.mkString("")}
+    def double = (number ~ '.' ~ number) ^^ {case ((x, y), z) => x + y.toString + z} | number
 
-    def double = (number ~ '.' ~ number) ^^ {case ((x, y), z) => x + y.toString + z} | number ^^ { _.toDouble}
-
-    def plus = '+' ^^ {_ => (x: Int, z: Int) => x + z}
-    def mins = '-' ^^ {_ => (x: Int, z: Int) => x - z}
-    def prod = '*' ^^ {_ => (x: Int, z: Int) => x * z}
-    def div = '/' ^^ {_ => (x: Int, z: Int) => x / z}
+    def plus = '+' ^^ {_ => (x: Double, z: Double) => x + z}
+    def mins = '-' ^^ {_ => (x: Double, z: Double) => x - z}
+    def prod = '*' ^^ {_ => (x: Double, z: Double) => x * z}
+    def div = '/' ^^ {_ => (x: Double, z: Double) => x / z}
 
     def expr = chainl1(term, plus or mins)
     def term = chainl1(factor, prod or div)
-    def factor: Parser[Int] = '(' ~> expr <~ ')' or number ^^ {_.toInt}
+    def factor: Parser[Double] = '(' ~> expr <~ ')' or double ^^ {_.toDouble}
 
-    def main(args: Array[String]) = println(double("12.324.2"))
+    def main(args: Array[String]) = println(expr("13+12.5*4"))
 }
 
 
