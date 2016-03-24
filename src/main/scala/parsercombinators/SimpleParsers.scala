@@ -70,6 +70,7 @@ trait SimpleParsers extends SimpleResults {
 
     }
 
+
     def consumeFirst: Parser[Elem] = Parser { in =>
         Success(first(in), rest(in))(Failure("unknown failure", in))
     }
@@ -90,8 +91,6 @@ trait StringParsers extends SimpleParsers {
 
     def eoi = EOI
 }
-
-
 
 object OXOParser extends StringParsers {
     def oxo = 'o' ~ 'x' ~ 'o'
