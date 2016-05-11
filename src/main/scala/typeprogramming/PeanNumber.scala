@@ -5,9 +5,9 @@ package typeprogramming
   *
   */
 
-import typeprogramming.{Bool, False, True}
-
 import scala.language.higherKinds
+
+
 
 sealed trait Nat {
     type Match[NoZero[N <: Nat] <: Up, IfZero <: Up, Up] <: Up
