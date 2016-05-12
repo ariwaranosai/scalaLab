@@ -22,13 +22,14 @@ case object WrongPassword extends LoginError {
 
 
 object mt {
+    import EitherIO._
+
     def getDomain(email: String): \/[LoginError, String] =
         email.split('@') match {
             case x if x.length == 2 => x(1).right
             case _ => InvalidEmail.left
         }
 
-    // todo
     val users = Map("example.com"->"qwer", "localhost"->"1234")
 
     def printResult0(domain: \/[LoginError, String]): IO[Unit] =
@@ -43,6 +44,12 @@ object mt {
             case -\/(l) => f(l)
         }
 
+    def maybe[A, B](f: B)(g: A => B)(e: Option[A]): B =
+        e match {
+            case Some(x) => g(x)
+            case None => f
+        }
+
     def printResult(domain: \/[LoginError, String]): IO[Unit] =
         domain.fold(
             y => IO.putStrLn(y.toString),
@@ -55,11 +62,20 @@ object mt {
             email <- IO.readLn
         } yield getDomain(email)
 
-    def getToken: EitherIO[LoginError, String] =
+    def getToken1: EitherIO[LoginError, String] =
         for {
             _ <- EitherIO(IO.putStrLn("Enter email address:").map(_.right[LoginError]))
             email <- EitherIO(IO.readLn.map(_.right[LoginError]))
             m <- EitherIO(IO(getDomain(email)))
+        } yield m
+
+    import EitherIO._
+
+    def getToken: EitherIO[LoginError, String] =
+        for {
+            _ <- liftIO[LoginError, Unit](putStrLn("Enter email address:"))
+            email <- liftIO[LoginError, String](readLn)
+            m <- liftEither[LoginError, String](getDomain(email))
         } yield m
 
 //            EitherIO(IO.putStrLn("Enter email address:").map(_.right[LoginError])) >>= {
@@ -68,7 +84,7 @@ object mt {
 //                }
 //            }
 
-    def userLogin: IO[\/[LoginError, String]] =
+    def userLogin0: IO[\/[LoginError, String]] =
         for {
             token <- getToken0
             x <- token match {
@@ -86,8 +102,47 @@ object mt {
             }
         } yield x
 
+//
+//    def userLogin: IO[\/[LoginError, String]] =
+//        for {
+//            token <- getToken
+//            userpw <- maybe(liftEither[LoginError, String](InvalidEmail.left))(
+//                (x: String) => liftEither(x.right)
+//            )(
+//                users.get(token)
+//            )
+//            passwd <- liftIO[LoginError, String](putStrLn("Enter your password:") >> readLn)
+//            x <- {if (userpw == passwd) token.point[EitherIO[LoginError, String]] else liftEither(-\/(WrongPassword))}
+//        } x
+
+    def userLogin1: EitherIO[LoginError, String] =
+        for {
+            token <- getToken
+            userpw <- maybe(liftEither[LoginError, String](InvalidEmail.left))(
+                (x: String) => EitherIO[LoginError, String](IO(x.right))
+            )(
+                users.get(token)
+            )
+            passwd <- liftIO[LoginError, String](putStrLn("Enter your password:") >> readLn)
+            m <- if(passwd != userpw)
+                    liftEither[LoginError, String](-\/(WrongPassword))
+                 else
+                    liftEither[LoginError, String](token.right)
+        } yield m
+
+    def printResultM(eio: LoginError \/ String): IO[Unit] = {
+        val t = eio match {
+            case \/-(token) => "login in with token: " + token
+            case -\/(InvalidEmail)  => "Invalid email address entered."
+            case -\/(NoSuchUser) => "No user with that email exists."
+            case  -\/(WrongPassword) => "Wrong password."
+        }
+
+        putStrLn(t)
+    }
+
     def main(args: Array[String]): Unit = {
-        getToken.runEitherIO.map(println(_)).unsafePerformIO()
+        (userLogin1.runEitherIO >>= printResultM).unsafePerformIO()
     }
 }
 

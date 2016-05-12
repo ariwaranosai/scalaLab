@@ -29,4 +29,8 @@ object EitherIO {
 
     }
 
+    def liftEither[E, A](e: \/[E, A]): EitherIO[E, A] = EitherIO(IO(e))
+
+    def liftIO[E, A](e :IO[A]): EitherIO[E, A] = EitherIO(e.map(_.right))
+
 }
