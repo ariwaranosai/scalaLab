@@ -21,7 +21,7 @@ case object WrongPassword extends LoginError {
 }
 
 
-object mt {
+object mt0 {
     import EitherIO._
 
     def getDomain(email: String): \/[LoginError, String] =

@@ -9,7 +9,7 @@ import effect._, IO._
   *
   */
 
-case class EitherIO[E, A](runEitherIO: IO[\/[E,A]])
+final case class EitherIO[E, A](runEitherIO: IO[\/[E,A]])
 
 object EitherIO {
     implicit def eitherIOFunctorInstance[E] = new Functor[({type l[X]  = EitherIO[E, X]})#l] with Monad[({type l[X] = EitherIO[E, X]})#l]{
