@@ -115,6 +115,6 @@ object mt {
 
   def main(args: Array[String]): Unit = {
     // (userLogin.runExceptT >>= printResult).unsafePerformIO()
-    type \\//[E, A] = ExceptT[E, Identity, A]
+    type EEither[E, A] = ExceptT[E, Identity, A]
   }
 }

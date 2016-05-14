@@ -118,10 +118,10 @@ object mt0 {
     def userLogin1: EitherIO[LoginError, String] =
         for {
             token <- getToken
-            userpw <- maybe(liftEither[LoginError, String](InvalidEmail.left))(
-                (x: String) => EitherIO[LoginError, String](IO(x.right))
+            userpw <- users.get(token).fold(
+                liftEither[LoginError, String](InvalidEmail.left)
             )(
-                users.get(token)
+                (x: String) => EitherIO[LoginError, String](IO(x.right))
             )
             passwd <- liftIO[LoginError, String](putStrLn("Enter your password:") >> readLn)
             m <- if(passwd != userpw)
