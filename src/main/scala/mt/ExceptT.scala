@@ -29,8 +29,8 @@ object ExceptT {
 
 
   def liftEither[E, M[_], A](et: \/[E, A])(implicit m: Monad[M]): ExceptT[E, M, A] = ExceptT(m.point(et))
-  def lift[E, M[_], A](et: M[A])(implicit m: Monad[M]): ExceptT[E, M, A] = ExceptT[E, M, A](m.map(et)(_.right[E]))
-  def throwE[E, M[_], A](e: E)(implicit m: Monad[M]): ExceptT[E, M, A] = liftEither(e.left)
+  def lift[E, M[_], A](et: M[A])(implicit m: Monad[M]): ExceptT[E, M, A] = ExceptT(m.map(et)(_.right[E]))
+  def throwE[E, M[_], A](e: E)(implicit m: Monad[M]): ExceptT[E, M, A] = liftEither(e.left[A])
   def catchE[E, M[_], A, C](throwing: => ExceptT[E, M, A])(handler: E => ExceptT[C, M, A])(implicit m: Monad[M]): ExceptT[C, M, A] =
     ExceptT(for {
       x <- throwing.runExceptT
@@ -113,8 +113,43 @@ object mt {
         liftEither[LoginError, IO, String](token.right)
     } yield m
 
+  def wrongPasswordHandler(er: LoginError): ExceptT[LoginError, IO, String] =
+    er match {
+      case WrongPassword => for {
+        _ <- lift[LoginError, IO, Unit](putStrLn("Wrong password, one more chance"))
+        x <- userLogin
+      } yield x
+
+      case err => throwE(err)
+    }
+
+  def printError[A](err: LoginError): ExceptT[LoginError, IO, A] =
+    for {
+      _ <- lift[LoginError, IO, Unit] {
+        putStrLn {
+          err match {
+            case WrongPassword => "Wrong password. No more changes."
+            case NoSuchUser => "No user with that email exists."
+            case InvalidEmail => "Invalid email address entered."
+          }
+        }
+      }
+      x <- throwE[LoginError, IO, A](err)
+    } yield x
+
+  def loginDialogue : ExceptT[LoginError, IO, Unit] =
+    for {
+      token <- {
+        val retry = catchE(userLogin)(wrongPasswordHandler)
+        catchE(retry)(printError)
+      }
+      x <- lift[LoginError, IO, Unit](putStrLn("Logged in with token: " + token))
+    } yield x
+
+
   def main(args: Array[String]): Unit = {
     // (userLogin.runExceptT >>= printResult).unsafePerformIO()
-    type EEither[E, A] = ExceptT[E, Identity, A]
+    // type EEither[E, A] = ExceptT[E, Identity, A]
+    loginDialogue.runExceptT.unsafePerformIO()
   }
 }
