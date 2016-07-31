@@ -10,10 +10,15 @@ import Scalaz._
 
 
 object T {
-    sealed trait Toy[+A, +Next]
-    case class Output[A, Next](a: A, next: Next) extends Toy[A, Next]
-    case class Bell[Next](next: Next) extends Toy[Nothing, Next]
-    case class Done() extends Toy[Nothing, Nothing]
+
+  sealed trait Toy[+A, +Next]
+
+  case class Output[A, Next](a: A, next: Next) extends Toy[A, Next]
+
+  case class Bell[Next](next: Next) extends Toy[Nothing, Next]
+
+  case class Done() extends Toy[Nothing, Nothing]
+
 }
 
 //case class Fix[F[_]](f: F[Fix[F]])
@@ -62,51 +67,55 @@ object T {
 //def done[A]: Free[Toy[A, ?], Unit] = Free.roll[Toy[A, ?], Unit](Done())
 
 object Toy {
-    import T._
-    implicit def ToyFunctor[Y]: Functor[Toy[Y, ?]] = new Functor[Toy[Y, ?]] {
-        override def map[A, B](fa: Toy[Y, A])(f: (A) => B): Toy[Y, B] =
-            fa match {
-                case o: Output[Y, A] => Output(o.a, f(o.next))
-                case b: Bell[A] => Bell(f(b.next))
-                case Done() => Done()
-            }
-    }
 
-    def output[A](a: A): Free[Toy[A, ?], Unit] =
-        Free.liftF[Toy[A, ?], Unit](Output(a, ()))
+  import T._
 
-    def bell[A]: Free[Toy[A, ?], Unit] =
-        Free.liftF[Toy[A, ?], Unit](Bell())
+  implicit def ToyFunctor[Y]: Functor[Toy[Y, ?]] = new Functor[Toy[Y, ?]] {
+    override def map[A, B](fa: Toy[Y, A])(f: (A) => B): Toy[Y, B] =
+      fa match {
+        case o: Output[Y, A] => Output(o.a, f(o.next))
+        case b: Bell[A] => Bell(f(b.next))
+        case Done() => Done()
+      }
+  }
 
-    def done[A]: Free[Toy[A, ?], Unit] = Free.liftF[Toy[A, ?], Unit](Done())
+  def output[A](a: A): Free[Toy[A, ?], Unit] =
+    Free.liftF[Toy[A, ?], Unit](Output(a, ()))
+
+  def bell[A]: Free[Toy[A, ?], Unit] =
+    Free.liftF[Toy[A, ?], Unit](Bell())
+
+  def done[A]: Free[Toy[A, ?], Unit] = Free.liftF[Toy[A, ?], Unit](Done())
 
 }
 
-    object main {
-        import T._
+object main {
 
-        def showProgram[R: Show, A: Show](p: Free[Toy[A, ?], R]): String =
-            p.resume.fold({
-                case Output(a, next) =>
-                    "output " + Show[A].shows(a) + "\n" + showProgram(next)
-                case Bell(next) =>
-                    "bell " + "\n" + showProgram(next)
-                case Done() =>
-                    "done\n"
-            }, { r: R => "return" + Show[R].shows(r) + "\n" })
+  import T._
+  import Toy._
 
-        import Toy._
+  def showProgram[R: Show, A: Show](p: Free[Toy[A, ?], R]): String =
+    p.resume.fold({
+      case Output(a, next) =>
+        "output " + Show[A].shows(a) + "\n" + showProgram(next)
+      case Bell(next) =>
+        "bell " + "\n" + showProgram(next)
+      case Done() =>
+        "done\n"
+    }, { r: R => "return" + Show[R].shows(r) + "\n" })
 
-        val subroutine = output('A')
+  import Toy._
 
-        val program = for {
-            _ <- subroutine
-            _ <- bell
-            _ <- done
-        } yield ()
+  val subroutine = output('A')
 
-        def pretty[R: Show, A: Show](p: Free[Toy[A, ?], R]) = print(showProgram(p))
+  val program = for {
+    _ <- subroutine
+    _ <- bell
+    _ <- done
+  } yield ()
 
-        pretty(program)
+  def pretty[R: Show, A: Show](p: Free[Toy[A, ?], R]) = print(showProgram(p))
 
-    }
+  pretty(program)
+
+}

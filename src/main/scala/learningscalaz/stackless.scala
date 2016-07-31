@@ -3,7 +3,6 @@
   *
   */
 import scalaz._
-import Scalaz._
 
 object SS {
 
@@ -15,7 +14,7 @@ object SS {
             }
     }
 
-    case class More[+A](k: () => Trampoline) extends Trampoline[A]
+    case class More[+A](k: () => Trampoline[A]) extends Trampoline[A]
 
     case class Done[+A](result: A) extends Trampoline[A]
 
@@ -23,12 +22,12 @@ object SS {
 
 
 object FM {
-    type Pair[+A] = (A, A)
-    type BinTree[+A] = Free[Pair, A]
-    type Tree[+A] = Free[List, A]
-    type FreeMonoid[+A] = Free[(A, ?), Unit]
-    type Trival[+A] = Unit
-    type Option[+A] = Free[Trival, A]
+    type Pair[A] = (A, A)
+    type BinTree[A] = Free[Pair, A]
+    type Tree[A] = Free[List, A]
+    type FreeMonoid[A] = Free[(A, ?), Unit]
+    type Trival[A] = Unit
+    type Option[A] = Free[Trival, A]
 
     type Trampoline[A] = Free[Function0, A]
 }
